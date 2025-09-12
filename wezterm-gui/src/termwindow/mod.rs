@@ -3220,7 +3220,11 @@ impl TermWindow {
             self.assign_overlay_for_pane(pane_id, overlay);
             promise::spawn::spawn(future).detach();
         } else {
-            mux.remove_pane(pane_id);
+            // Move pane removal to background thread to prevent GUI freezing
+            promise::spawn::spawn_into_new_thread(move || {
+                mux.remove_pane(pane_id);
+            })
+            .detach();
         }
     }
 
@@ -3251,7 +3255,11 @@ impl TermWindow {
             self.assign_overlay(tab_id, overlay);
             promise::spawn::spawn(future).detach();
         } else {
-            mux.remove_tab(tab_id);
+            // Move tab removal to background thread to prevent GUI freezing
+            promise::spawn::spawn_into_new_thread(move || {
+                mux.remove_tab(tab_id);
+            })
+            .detach();
         }
     }
 
@@ -3271,7 +3279,11 @@ impl TermWindow {
             self.assign_overlay(tab_id, overlay);
             promise::spawn::spawn(future).detach();
         } else {
-            mux.remove_tab(tab_id);
+            // Move tab removal to background thread to prevent GUI freezing
+            promise::spawn::spawn_into_new_thread(move || {
+                mux.remove_tab(tab_id);
+            })
+            .detach();
         }
     }
 

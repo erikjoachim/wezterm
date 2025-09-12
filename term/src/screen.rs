@@ -762,10 +762,14 @@ impl Screen {
     pub fn erase_scrollback(&mut self) {
         let len = self.lines.len();
         let to_clear = len - self.physical_rows;
-        for _ in 0..to_clear {
-            self.lines.pop_front();
+        
+        if to_clear > 0 {
+            // Use drain for more efficient bulk removal instead of individual pops
+            // This avoids O(n) operations for each pop on large buffers
+            self.lines.drain(0..to_clear);
+            
             if self.allow_scrollback {
-                self.stable_row_index_offset += 1;
+                self.stable_row_index_offset += to_clear;
             }
         }
     }
