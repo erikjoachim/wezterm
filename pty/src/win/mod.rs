@@ -72,14 +72,17 @@ pub struct WinChildKiller {
 
 impl ChildKiller for WinChildKiller {
     fn kill(&mut self) -> IoResult<()> {
-        let proc_handle = self.proc.as_raw_handle() as _;
-        
+        // Clone the handle so it can be safely moved to another thread
+        let proc = self.proc.try_clone().map_err(|e| {
+            IoError::new(std::io::ErrorKind::Other, format!("Failed to clone handle: {}", e))
+        })?;
+
         // Spawn termination in a separate thread to avoid blocking
         // TerminateProcess can block on Windows, especially with stubborn processes
         std::thread::spawn(move || {
-            unsafe { TerminateProcess(proc_handle, 1) };
+            unsafe { TerminateProcess(proc.as_raw_handle() as _, 1) };
         });
-        
+
         // Return immediately to prevent GUI freezing
         // The process will be terminated asynchronously
         Ok(())

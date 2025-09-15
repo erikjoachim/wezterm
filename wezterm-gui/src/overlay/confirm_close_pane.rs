@@ -13,8 +13,7 @@ pub fn confirm_close_pane(
     window: ::window::Window,
 ) -> anyhow::Result<()> {
     if confirm::run_confirmation("🛑 Really kill this pane?", &mut term)? {
-        // Move pane killing to background thread to prevent GUI freezing
-        promise::spawn::spawn_into_new_thread(move || {
+        promise::spawn::spawn_into_main_thread(async move {
             let mux = Mux::get();
             let tab = match mux.get_active_tab_for_window(mux_window_id) {
                 Some(tab) => tab,
@@ -39,8 +38,7 @@ pub fn confirm_close_tab(
         "🛑 Really kill this tab and all contained panes?",
         &mut term,
     )? {
-        // Move tab removal to background thread to prevent GUI freezing
-        promise::spawn::spawn_into_new_thread(move || {
+        promise::spawn::spawn_into_main_thread(async move {
             let mux = Mux::get();
             mux.remove_tab(tab_id);
         })
@@ -61,8 +59,7 @@ pub fn confirm_close_window(
         "🛑 Really kill this window and all contained tabs and panes?",
         &mut term,
     )? {
-        // Move window killing to background thread to prevent GUI freezing
-        promise::spawn::spawn_into_new_thread(move || {
+        promise::spawn::spawn_into_main_thread(async move {
             let mux = Mux::get();
             mux.kill_window(mux_window_id);
         })
