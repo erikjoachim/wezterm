@@ -102,8 +102,7 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
-            --generate-notes \
-            --prerelease
+            --generate-notes
       - name: "Upload to Release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
