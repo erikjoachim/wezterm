@@ -2,13 +2,41 @@
   description = "A GPU-accelerated cross-platform terminal emulator and multiplexer written by @wez and implemented in Rust";
 
   inputs = {
-    self.submodules = true;
-
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # NOTE: @2026-06 Since Nix 2.27 we can set `inputs.self.submodules = true;` but it's silently
+    # ignored for all usage of `github:…` flake refs..
+    # refs:
+    # - https://github.com/wezterm/wezterm/pull/7854#issuecomment-4718011398 (previous attempt)
+    # - https://github.com/NixOS/nix/issues/13571
+    # - https://github.com/NixOS/nix/issues/14982
+    #
+    # ... In the meantime we kinda duplicate the dependencies here then replace the submodules with
+    # links to each repo in package sources.
+    #
+    # Try to use tags when possible to increase readability
+    # (note: `git submodule status` in wezterm repo will show the `git describe` result for each
+    # submodule, can help finding a tag if any)
+    freetype2 = {
+      url = "github:freetype/freetype/VER-2-13-3";
+      flake = false;
+    };
+    harfbuzz = {
+      url = "github:harfbuzz/harfbuzz/11.2.1";
+      flake = false;
+    };
+    libpng = {
+      url = "github:pnggroup/libpng/v1.6.44";
+      flake = false;
+    };
+    zlib = {
+      url = "github:madler/zlib/v1.3.1";
+      flake = false;
     };
   };
 
@@ -94,6 +122,16 @@
             allowBuiltinFetchGit = true;
           };
 
+          # Inject collected submodules in-place for Nix build
+          prePatch = ''
+            rm -rf deps/freetype/{freetype2,libpng,zlib} deps/harfbuzz/harfbuzz
+
+            ln -s ${inputs.freetype2} deps/freetype/freetype2
+            ln -s ${inputs.libpng} deps/freetype/libpng
+            ln -s ${inputs.zlib} deps/freetype/zlib
+            ln -s ${inputs.harfbuzz} deps/harfbuzz/harfbuzz
+          '';
+
           postPatch = ''
             echo ${finalAttrs.version} > .tag
 
@@ -123,12 +161,13 @@
               OUT_APP="$out/Applications/WezTerm.app"
               cp -r assets/macos/WezTerm.app "$OUT_APP"
               rm $OUT_APP/*.dylib
-              cp -r assets/shell-integration/* "$OUT_APP"
+              cp -r assets/shell-integration/* "$OUT_APP/Contents/Resources"
               # macOS will only recognize our application bundle
               # if the binaries are inside of it. Move them there
               # and create symbolic links for them in bin/.
-              mv $out/bin/{wezterm,wezterm-mux-server,wezterm-gui,strip-ansi-escapes} "$OUT_APP"
-              ln -s "$OUT_APP"/{wezterm,wezterm-mux-server,wezterm-gui,strip-ansi-escapes} "$out/bin"
+              mkdir -p "$OUT_APP/Contents/MacOS"
+              mv $out/bin/{wezterm,wezterm-mux-server,wezterm-gui,strip-ansi-escapes} "$OUT_APP/Contents/MacOS"
+              ln -s "$OUT_APP/Contents/MacOS"/{wezterm,wezterm-mux-server,wezterm-gui,strip-ansi-escapes} "$out/bin"
             '';
 
           preBuild = ''
